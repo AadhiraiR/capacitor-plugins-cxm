@@ -1,5 +1,5 @@
 {
-  "name": "@iamsli/camera-cxm",
+  "name": "camera-cxm",
   "version": "1.0.0",
   "description": "The Camera API provides the ability to take a photo with the camera or choose an existing one from the photo album. We add textscan to the photo",
   "main": "dist/plugin.cjs.js",
