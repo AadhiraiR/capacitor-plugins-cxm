@@ -14,6 +14,7 @@ import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
+import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.FileUtils;
 import com.getcapacitor.JSArray;
@@ -27,6 +28,15 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -220,6 +230,7 @@ public class CameraPlugin extends Plugin {
         settings.setHeight(call.getInt("height", 0));
         settings.setShouldResize(settings.getWidth() > 0 || settings.getHeight() > 0);
         settings.setShouldCorrectOrientation(call.getBoolean("correctOrientation", CameraSettings.DEFAULT_CORRECT_ORIENTATION));
+        settings.setShouldScanText(call.getBoolean("shouldScanText", false));
         try {
             settings.setSource(CameraSource.valueOf(call.getString("source", CameraSource.PROMPT.getSource())));
         } catch (IllegalArgumentException ex) {
@@ -573,6 +584,8 @@ public class CameraPlugin extends Plugin {
 
         if (settings.getResultType() == CameraResultType.BASE64) {
             returnBase64(call, exif, bitmapOutputStream);
+        } else if (settings.getResultType() == CameraResultType.URI && settings.isShouldScanText()) {
+            returnRecognizedText(call, exif, bitmap, u, bitmapOutputStream);
         } else if (settings.getResultType() == CameraResultType.URI) {
             returnFileURI(call, exif, bitmap, u, bitmapOutputStream);
         } else if (settings.getResultType() == CameraResultType.DATAURL) {
@@ -604,6 +617,50 @@ public class CameraPlugin extends Plugin {
         exif.copyExif(newUri.getPath());
         if (newUri != null) {
             JSObject ret = new JSObject();
+            ret.put("format", "jpeg");
+            ret.put("exif", exif.toJson());
+            ret.put("path", newUri.toString());
+            ret.put("webPath", FileUtils.getPortablePath(getContext(), bridge.getLocalUrl(), newUri));
+            ret.put("saved", isSaved);
+            call.resolve(ret);
+        } else {
+            call.reject(UNABLE_TO_PROCESS_IMAGE);
+        }
+    }
+
+    private String getRecognizedText(Text visionText) {
+        String recognizedText = "";
+        for (Text.TextBlock block : visionText.getTextBlocks()) {
+            String text = block.getText();
+            recognizedText += text + " ";
+        }
+        return recognizedText;
+    }
+
+    private void returnRecognizedText(PluginCall call, ExifWrapper exif, Bitmap bitmap, Uri u, ByteArrayOutputStream bitmapOutputStream) {
+        Uri newUri = getTempImage(u, bitmapOutputStream);
+        exif.copyExif(newUri.getPath());
+
+        if (newUri != null) {
+            JSObject ret = new JSObject();
+            TextRecognizer recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            InputImage image = InputImage.fromBitmap(bitmap, 0);
+
+            Task<Text> result =
+                    recognizer.process(image)
+                            .addOnSuccessListener(new OnSuccessListener<Text>() {
+                                @Override
+                                public void onSuccess(Text visionText) {
+                                }
+                            })
+                            .addOnFailureListener(
+                                    new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            call.reject("SOMETHING WRONG WITH OCR MODEL");
+                                        }
+                                    });
+            ret.put("recognizedText", getRecognizedText(result.getResult()));
             ret.put("format", "jpeg");
             ret.put("exif", exif.toJson());
             ret.put("path", newUri.toString());
