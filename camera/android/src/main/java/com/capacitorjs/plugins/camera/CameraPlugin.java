@@ -13,9 +13,11 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.util.Base64;
+
 import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
+
 import com.getcapacitor.FileUtils;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -37,6 +39,8 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import org.json.JSONException;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,7 +54,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import org.json.JSONException;
 
 /**
  * The Camera plugin makes it easy to take a photo or have the user select a photo
@@ -61,14 +64,14 @@ import org.json.JSONException;
  * Adapted from https://developer.android.com/training/camera/photobasics.html
  */
 @CapacitorPlugin(
-    name = "Camera",
-    permissions = {
-        @Permission(strings = { Manifest.permission.CAMERA }, alias = CameraPlugin.CAMERA),
-        @Permission(
-            strings = { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
-            alias = CameraPlugin.PHOTOS
-        )
-    }
+        name = "Camera",
+        permissions = {
+                @Permission(strings = { Manifest.permission.CAMERA }, alias = CameraPlugin.CAMERA),
+                @Permission(
+                        strings = { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
+                        alias = CameraPlugin.PHOTOS
+                )
+        }
 )
 public class CameraPlugin extends Plugin {
 
@@ -135,17 +138,17 @@ public class CameraPlugin extends Plugin {
         final CameraBottomSheetDialogFragment fragment = new CameraBottomSheetDialogFragment();
         fragment.setTitle(call.getString("promptLabelHeader", "Photo"));
         fragment.setOptions(
-            options,
-            index -> {
-                if (index == 0) {
-                    settings.setSource(CameraSource.PHOTOS);
-                    openPhotos(call);
-                } else if (index == 1) {
-                    settings.setSource(CameraSource.CAMERA);
-                    openCamera(call);
-                }
-            },
-            () -> call.reject("User cancelled photos app")
+                options,
+                index -> {
+                    if (index == 0) {
+                        settings.setSource(CameraSource.PHOTOS);
+                        openPhotos(call);
+                    } else if (index == 1) {
+                        settings.setSource(CameraSource.CAMERA);
+                        openCamera(call);
+                    }
+                },
+                () -> call.reject("User cancelled photos app")
         );
         fragment.show(getActivity().getSupportFragmentManager(), "capacitorModalsActionSheet");
     }
@@ -341,13 +344,23 @@ public class CameraPlugin extends Plugin {
         if (data != null) {
             Executor executor = Executors.newSingleThreadExecutor();
             executor.execute(
-                () -> {
-                    JSObject ret = new JSObject();
-                    JSArray photos = new JSArray();
-                    if (data.getClipData() != null) {
-                        int count = data.getClipData().getItemCount();
-                        for (int i = 0; i < count; i++) {
-                            Uri imageUri = data.getClipData().getItemAt(i).getUri();
+                    () -> {
+                        JSObject ret = new JSObject();
+                        JSArray photos = new JSArray();
+                        if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            for (int i = 0; i < count; i++) {
+                                Uri imageUri = data.getClipData().getItemAt(i).getUri();
+                                JSObject processResult = processPickedImages(imageUri);
+                                if (processResult.getString("error") != null && !processResult.getString("error").isEmpty()) {
+                                    call.reject(processResult.getString("error"));
+                                    return;
+                                } else {
+                                    photos.put(processResult);
+                                }
+                            }
+                        } else if (data.getData() != null) {
+                            Uri imageUri = data.getData();
                             JSObject processResult = processPickedImages(imageUri);
                             if (processResult.getString("error") != null && !processResult.getString("error").isEmpty()) {
                                 call.reject(processResult.getString("error"));
@@ -355,43 +368,33 @@ public class CameraPlugin extends Plugin {
                             } else {
                                 photos.put(processResult);
                             }
-                        }
-                    } else if (data.getData() != null) {
-                        Uri imageUri = data.getData();
-                        JSObject processResult = processPickedImages(imageUri);
-                        if (processResult.getString("error") != null && !processResult.getString("error").isEmpty()) {
-                            call.reject(processResult.getString("error"));
-                            return;
-                        } else {
-                            photos.put(processResult);
-                        }
-                    } else if (data.getExtras() != null) {
-                        Bundle bundle = data.getExtras();
-                        if (bundle.keySet().contains("selectedItems")) {
-                            ArrayList<Parcelable> fileUris = bundle.getParcelableArrayList("selectedItems");
-                            if (fileUris != null) {
-                                for (Parcelable fileUri : fileUris) {
-                                    if (fileUri instanceof Uri) {
-                                        Uri imageUri = (Uri) fileUri;
-                                        try {
-                                            JSObject processResult = processPickedImages(imageUri);
-                                            if (processResult.getString("error") != null && !processResult.getString("error").isEmpty()) {
-                                                call.reject(processResult.getString("error"));
-                                                return;
-                                            } else {
-                                                photos.put(processResult);
+                        } else if (data.getExtras() != null) {
+                            Bundle bundle = data.getExtras();
+                            if (bundle.keySet().contains("selectedItems")) {
+                                ArrayList<Parcelable> fileUris = bundle.getParcelableArrayList("selectedItems");
+                                if (fileUris != null) {
+                                    for (Parcelable fileUri : fileUris) {
+                                        if (fileUri instanceof Uri) {
+                                            Uri imageUri = (Uri) fileUri;
+                                            try {
+                                                JSObject processResult = processPickedImages(imageUri);
+                                                if (processResult.getString("error") != null && !processResult.getString("error").isEmpty()) {
+                                                    call.reject(processResult.getString("error"));
+                                                    return;
+                                                } else {
+                                                    photos.put(processResult);
+                                                }
+                                            } catch (SecurityException ex) {
+                                                call.reject("SecurityException");
                                             }
-                                        } catch (SecurityException ex) {
-                                            call.reject("SecurityException");
                                         }
                                     }
                                 }
                             }
                         }
+                        ret.put("photos", photos);
+                        call.resolve(ret);
                     }
-                    ret.put("photos", photos);
-                    call.resolve(ret);
-                }
             );
         } else {
             call.reject("No images picked");
@@ -568,10 +571,10 @@ public class CameraPlugin extends Plugin {
                 String fileToSavePath = imageEditedFileSavePath != null ? imageEditedFileSavePath : imageFileSavePath;
                 File fileToSave = new File(fileToSavePath);
                 String inserted = MediaStore.Images.Media.insertImage(
-                    getContext().getContentResolver(),
-                    fileToSavePath,
-                    fileToSave.getName(),
-                    ""
+                        getContext().getContentResolver(),
+                        fileToSavePath,
+                        fileToSave.getName(),
+                        ""
                 );
                 if (inserted == null) {
                     isSaved = false;
@@ -629,12 +632,12 @@ public class CameraPlugin extends Plugin {
     }
 
     private String getRecognizedText(Text visionText) {
-        String recognizedText = "";
+        String recognizedTextString = "";
         for (Text.TextBlock block : visionText.getTextBlocks()) {
             String text = block.getText();
-            recognizedText += text + " ";
+            recognizedTextString += text + " ";
         }
-        return recognizedText;
+        return recognizedTextString;
     }
 
     private void returnRecognizedText(PluginCall call, ExifWrapper exif, Bitmap bitmap, Uri u, ByteArrayOutputStream bitmapOutputStream) {
@@ -644,29 +647,30 @@ public class CameraPlugin extends Plugin {
         if (newUri != null) {
             JSObject ret = new JSObject();
             TextRecognizer recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-            InputImage image = InputImage.fromBitmap(bitmap, 0);
+             InputImage image = InputImage.fromBitmap(bitmap, 0);
 
             Task<Text> result =
                     recognizer.process(image)
                             .addOnSuccessListener(new OnSuccessListener<Text>() {
                                 @Override
                                 public void onSuccess(Text visionText) {
+                                    ret.put("recognizedText", getRecognizedText(visionText));
+                                    ret.put("format", "jpeg");
+                                    ret.put("exif", exif.toJson());
+                                    ret.put("path", newUri.toString());
+                                    ret.put("webPath", FileUtils.getPortablePath(getContext(), bridge.getLocalUrl(), newUri));
+                                    ret.put("saved", isSaved);
+                                    call.resolve(ret);
                                 }
                             })
                             .addOnFailureListener(
                                     new OnFailureListener() {
                                         @Override
                                         public void onFailure(@NonNull Exception e) {
-                                            call.reject("SOMETHING WRONG WITH OCR MODEL");
+                                            Logger.error("something went wrong with MLKIT text recognition", UNABLE_TO_PROCESS_IMAGE, e);
+                                            call.reject(UNABLE_TO_PROCESS_IMAGE);
                                         }
                                     });
-            ret.put("recognizedText", getRecognizedText(result.getResult()));
-            ret.put("format", "jpeg");
-            ret.put("exif", exif.toJson());
-            ret.put("path", newUri.toString());
-            ret.put("webPath", FileUtils.getPortablePath(getContext(), bridge.getLocalUrl(), newUri));
-            ret.put("saved", isSaved);
-            call.resolve(ret);
         } else {
             call.reject(UNABLE_TO_PROCESS_IMAGE);
         }
@@ -807,8 +811,8 @@ public class CameraPlugin extends Plugin {
             editIntent.addFlags(flags);
             editIntent.putExtra(MediaStore.EXTRA_OUTPUT, editUri);
             List<ResolveInfo> resInfoList = getContext()
-                .getPackageManager()
-                .queryIntentActivities(editIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                    .getPackageManager()
+                    .queryIntentActivities(editIntent, PackageManager.MATCH_DEFAULT_ONLY);
             for (ResolveInfo resolveInfo : resInfoList) {
                 String packageName = resolveInfo.activityInfo.packageName;
                 getContext().grantUriPermission(packageName, editUri, flags);
