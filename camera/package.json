@@ -13,7 +13,8 @@
     "ios/Plugin/",
     "CapacitorCamera.podspec"
   ],
-  "author": "Sandy Li <sandy.s.li@oracle.com>",
+  "author": "Ionic <hi@ionicframework.com>",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iamsli/capacitor-plugins-cxm.git"
@@ -76,6 +77,4 @@
     }
   },
   "homepage": "https://github.com/iamsli/capacitor-plugins-cxm#readme",
-  "license": "MIT",
-  "dependencies": {}
 }
