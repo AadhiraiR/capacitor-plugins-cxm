@@ -75,11 +75,7 @@
       "src": "android"
     }
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com"
-  },
   "homepage": "https://github.com/iamsli/capacitor-plugins-cxm#readme",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {}
 }
