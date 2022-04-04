@@ -1,6 +1,6 @@
 {
   "name": "capacitor-camera-cxm",
-  "version": "1.0.1",
+  "version": "1.1.2",
   "description": "The Camera API provides the ability to take a photo with the camera or choose an existing one from the photo album. We add textscan to the photo",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -11,7 +11,7 @@
     "android/build.gradle",
     "dist/",
     "ios/Plugin/",
-    "CapacitorCamera.podspec"
+    "CapacitorCameraCxm.podspec"
   ],
   "author": "Ionic <hi@ionicframework.com>",
   "license": "MIT",
@@ -76,5 +76,6 @@
       "src": "android"
     }
   },
-  "homepage": "https://github.com/iamsli/capacitor-plugins-cxm#readme"
+  "homepage": "https://github.com/iamsli/capacitor-plugins-cxm#readme",
+  "dependencies": {}
 }
