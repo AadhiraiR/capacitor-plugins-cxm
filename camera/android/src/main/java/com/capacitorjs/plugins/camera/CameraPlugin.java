@@ -635,7 +635,7 @@ public class CameraPlugin extends Plugin {
         String recognizedTextString = "";
         for (Text.TextBlock block : visionText.getTextBlocks()) {
             String text = block.getText();
-            recognizedTextString += text + " ";
+            recognizedTextString += text + "\n";
         }
         return recognizedTextString;
     }
