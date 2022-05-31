@@ -632,13 +632,35 @@ public class CameraPlugin extends Plugin {
     }
 
     private String getRecognizedText(Text visionText) {
-        String recognizedTextString = "";
-        for (Text.TextBlock block : visionText.getTextBlocks()) {
-            String text = block.getText();
-            recognizedTextString += text + "\n";
-        }
-        return recognizedTextString;
-    }
+        List<Text.TextBlock> blocks = visionText.getTextBlocks();
+           if (blocks.size() == 0) {
+               return "";
+           }
+
+           String recognizedTextString = "";
+
+           for (int i = 0; i < blocks.size(); i++) {
+               List<Text.Line> lines = blocks.get(i).getLines();
+               String line = "";
+               for (int j = 0; j < lines.size(); j++) {
+                   List<Text.Element> elements = lines.get(j).getElements();
+                   for (int k = 0; k < elements.size(); k++) {
+                       line = line + " " + elements.get(k).getText();
+                   }
+                   line = line + '\n';
+               }
+               recognizedTextString += line;
+           }
+
+//        String recognizedTeeibccbchggrbubuukvcecvftkgcbherucijjrddbdrhk
+//        eibccbchggrbteiidibnbgktcejdldfrttguiftbfudv
+//        xtString = "";
+//        for (Text.TextBlock block : visionText.getTextBlocks()) {
+//            String text = block.getText();
+//            recognizedTextString += text + '\n';
+//        }
+       return recognizedTextString;
+   }
 
     private void returnRecognizedText(PluginCall call, ExifWrapper exif, Bitmap bitmap, Uri u, ByteArrayOutputStream bitmapOutputStream) {
         Uri newUri = getTempImage(u, bitmapOutputStream);
