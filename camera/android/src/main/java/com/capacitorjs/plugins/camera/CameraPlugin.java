@@ -651,14 +651,6 @@ public class CameraPlugin extends Plugin {
                }
                recognizedTextString += line;
            }
-
-//        String recognizedTeeibccbchggrbubuukvcecvftkgcbherucijjrddbdrhk
-//        eibccbchggrbteiidibnbgktcejdldfrttguiftbfudv
-//        xtString = "";
-//        for (Text.TextBlock block : visionText.getTextBlocks()) {
-//            String text = block.getText();
-//            recognizedTextString += text + '\n';
-//        }
        return recognizedTextString;
    }
 
