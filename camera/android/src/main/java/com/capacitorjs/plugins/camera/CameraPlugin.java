@@ -647,7 +647,7 @@ public class CameraPlugin extends Plugin {
                    for (int k = 0; k < elements.size(); k++) {
                        line = line + " " + elements.get(k).getText();
                    }
-                   line = line + '\n';
+                   line = line + System.lineSeparator();
                }
                recognizedTextString += line;
            }
